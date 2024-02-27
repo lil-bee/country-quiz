@@ -1,5 +1,8 @@
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
+import { Text } from "@chakra-ui/react";
+import { Button, ButtonGroup } from "@chakra-ui/react";
+import { useState } from "react";
 
 interface Flag {
   png: string;
@@ -17,6 +20,10 @@ interface Capital {
   [key: number]: string;
 }
 
+interface PilihanJawaban {
+  [key: number]: string;
+}
+
 interface Country {
   flags: Flag;
   name: Name;
@@ -24,6 +31,12 @@ interface Country {
 }
 
 function Question() {
+  const [cekJawaban, setCekJawaban] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState("");
+
+  const handleClick = (answer: string) => {
+    setSelectedAnswer(answer);
+  };
   const fetchData = async () => {
     try {
       const { data } = await axios.get<Country[]>(
@@ -42,33 +55,97 @@ function Question() {
     }
   };
 
-  const { data, status } = useQuery({
+  const { data, status, refetch } = useQuery({
     queryKey: ["countries"],
     queryFn: fetchData,
-    staleTime: Infinity,
   });
 
-  if (data) {
-    console.log(data);
+  let correctNum = 0;
+  let randomNum1 = 0;
+  let randomNum2 = 0;
+  let randomNum3 = 0;
+
+  function shuffle<T>(array: T[]): T[] {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
   }
-  console.log(status);
-  return (
+
+  if (data) {
+    // Fungsi untuk menghasilkan angka acak yang unik
+    const getUniqueRandomNum = (min: number, max: number): number => {
+      const numbers = [];
+      for (let i = min; i <= max; i++) {
+        numbers.push(i);
+      }
+      // Acak array
+      for (let i = numbers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+      }
+      // Kembalikan angka pertama dari array yang sudah diacak
+      return numbers[0];
+    };
+
+    // Jawaban benar
+    correctNum = getUniqueRandomNum(0, data.length - 1);
+
+    // Pilihan jawaban lainnya
+    randomNum1 = getUniqueRandomNum(0, data.length - 1);
+    randomNum2 = getUniqueRandomNum(0, data.length - 1);
+    randomNum3 = getUniqueRandomNum(0, data.length - 1);
+  }
+
+  let pilihanJawaban = [];
+
+  pilihanJawaban = data
+    ? [
+        data[randomNum1].NAMA,
+        data[randomNum2].NAMA,
+        data[randomNum3].NAMA,
+        data[correctNum].NAMA,
+      ]
+    : [];
+  pilihanJawaban = shuffle(pilihanJawaban);
+
+  if (status === "pending") {
+    return <div>loading...</div>;
+  }
+  if (status === "error") {
+    return <div>Error fetching data</div>;
+  }
+  return status === "success" && data ? (
     <>
-      {status === "pending" ? (
-        <div>Loading...</div>
-      ) : status === "error" ? (
-        <div>Error fetching data</div>
-      ) : data ? (
-        data.map((item, index) => (
+      <div>
+        <img src={data[correctNum].BENDERA} />
+
+        <p>{data[correctNum].IBUKOTA} is the capital of</p>
+        <br />
+        {pilihanJawaban.map((item, index) => (
           <div key={index}>
-            <div>{item.NAMA}</div>
-            <img src={item.BENDERA} alt="Flag" />
-            <div>{item.IBUKOTA}</div>
+            <Button
+              onClick={(e) => {
+                e.preventDefault();
+                handleClick(item);
+              }}
+              colorScheme={
+                selectedAnswer === item && item === data[correctNum].NAMA
+                  ? "green"
+                  : selectedAnswer === item
+                    ? "red"
+                    : "initial"
+              }
+              variant="outline"
+            >
+              {item}
+            </Button>
           </div>
-        ))
-      ) : null}
+        ))}
+      </div>
     </>
-  );
+  ) : null;
 }
 
 export default Question;

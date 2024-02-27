@@ -11,7 +11,6 @@ function App() {
     <>
       <QueryClientProvider client={queryClient}>
         <ChakraProvider theme={theme}>
-          <div>Test</div>
           <Question />
         </ChakraProvider>
       </QueryClientProvider>
